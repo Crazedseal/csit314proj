@@ -58,8 +58,11 @@ class BingContext(SearchContext):
         return 'q'
 
     def parse_result_into_value(self, result):
-
-        return
+        r_pipe = result.replace('<span class="sb_count">', '')
+        r_pipe = r_pipe.replace(' results</span>', '')
+        r_pipe = r_pipe.replace(',', '')
+        r_pipe = int(r_pipe)
+        return r_pipe
 
 class KeywordTest:
     searchWord = ""
@@ -90,6 +93,7 @@ def test_bing_context():
     assert b_context.get_element_type() == 'span'
     assert b_context.get_selector_type() == 'class'
     assert b_context.get_selector() == 'sb_count'
+    assert b_context.parse_result_into_value('<span class="sb_count">565,000,000 results</span>') == 565000000
     return
 
 # Running
