@@ -2,15 +2,13 @@ import requests
 from enum import Enum
 from bs4 import BeautifulSoup
 from abc import ABC, abstractmethod
+import random
 
 class Operation(Enum):
     SINGLE = 0
     AND = 1
     OR = 2
     EXCLUDE = 3
-
-# bing class="sb_count"
-#x = requests.get('https://www.bing.com/search', params = {"q": "wikipedia"})
 
 class SearchContext(ABC):
     def __init__(self):
@@ -68,23 +66,66 @@ class KeywordTest:
     searchWord = ""
     altWord = ""
     result = {}
+    cancel = False
     def __init__(self, search, alt, s_context):
         self.SearchWord = search
         self.AltWord = alt
         self.context = s_context
         return
 
-    def do_single(self):
+    def do_single_search(self):
         single_page = requests.get(self.context.get_url(), params = {self.context.get_param(): self.searchWord})
         soup = BeautifulSoup(single_page.text)
         s_result = soup.find(self.context.get_element_type(),{self.context.context.get_selector_type():self.context.get_selector()})
+        if (s_result == None):
+            cancel = True
+            return
         result[Operation.SINGLE] = self.context.parse_result_into_value(s_result)
         return
 
-    
-    def do_search(self):
-        do_single()
+    def do_and_search(self):
+        and_page = requests.get(self.context.get_url(), params = {self.context.get_param(): self.searchWord + " " + self.altWord})
+        soup = BeautifulSoup(and_page.text)
+        s_result = soup.find(self.context.get_element_type(),{self.context.context.get_selector_type():self.context.get_selector()})
+        if (s_result == None):
+            cancel = True
+            return
+        result[Operation.AND] = self.context.parse_result_into_value(s_result)
         return
+
+    def do_or_search(self):
+        or_page = requests.get(self.context.get_url(), params = {self.context.get_param(): self.searchWord + " | " + self.altWord})
+        soup = BeautifulSoup(or_page.text)
+        s_result = soup.find(self.context.get_element_type(),{self.context.context.get_selector_type():self.context.get_selector()})
+        if (s_result == None):
+            cancel = True
+            return
+        result[Operation.OR] = self.context.parse_result_into_value(s_result)
+        return
+
+    def do_exclude_search(self):
+        exclude_page = requests.get(self.context.get_url(), params = {self.context.get_param(): self.searchWord + " -" + self.altWord})
+        soup = BeautifulSoup(exclude_page.text)
+        s_result = soup.find(self.context.get_element_type(),{self.context.context.get_selector_type():self.context.get_selector()})
+        if (s_result == None):
+            cancel = True
+            return
+        result[Operation.EXCLUDE] = self.context.parse_result_into_value(s_result)
+        return
+
+    def do_search(self):
+        do_single_search()
+        if cancel:
+            return
+        do_and_search()
+        if cancel:
+            return
+        do_or_search()
+        if cancel:
+            return
+        do_exclude_search()
+        return
+    
 
 def get_word_list(filename):
     file = open(filename, "r")
@@ -111,4 +152,10 @@ def test_word_list_load():
 # Running
 if __name__ == "__main__":
     test_bing_context()
-    test_word_list_load()
+    word_list = get_word_list('google-10000-english-usa-no-swears-medium.txt')
+    word_set = { }
+    for num in range(0, 1000):
+        rand = random.randint(0, len(word_list)-1) # Get a random word.
+        print(word_list[rand])
+        
+        
