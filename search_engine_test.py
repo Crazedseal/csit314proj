@@ -86,6 +86,14 @@ class KeywordTest:
         do_single()
         return
 
+def get_word_list(filename):
+    file = open(filename, "r")
+    word_list = []
+    for line in file:
+        word_list.append(line.strip())
+
+    return word_list
+
 # Module Testing
 def test_bing_context():
     b_context = BingContext()
@@ -96,6 +104,11 @@ def test_bing_context():
     assert b_context.parse_result_into_value('<span class="sb_count">565,000,000 results</span>') == 565000000
     return
 
+def test_word_list_load():
+    words = get_word_list('google-10000-english-usa-no-swears-medium.txt')
+    assert words
+
 # Running
 if __name__ == "__main__":
     test_bing_context()
+    test_word_list_load()
