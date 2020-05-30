@@ -174,13 +174,13 @@ if __name__ == "__main__":
     cookie = input('cookie: ')
     agent = input('agent: ')
     header = { 'user-agent': agent, 'cookie': cookie }
-    
+    result_breakdown = { Operation.AND: { 'success': 0, 'fail': 0 }, Operation.OR: { 'success': 0, 'fail': 0 }, Operation.EXCLUDE: { 'success': 0, 'fail': 0 } }
     #test_bing_context()
     bingContext = BingContext(header)
     word_list = get_word_list('google-10000-english-usa-no-swears-medium.txt')
     word_set = { }
     keywordTests = []
-    for num in range(0, 1000):
+    for num in range(0, 20):
         rand = random.randint(0, len(word_list)-1) # Get a random word.
         print(num)
         counter = 0
@@ -197,6 +197,26 @@ if __name__ == "__main__":
         currentTest = KeywordTest(word_list[rand], word_list[altrand], bingContext)
         currentTest.do_search()
         print(currentTest.__dict__)
+        
+        if not currentTest.cancel:
+            if (currentTest.result[Operation.AND] > currentTest.result[Operation.SINGLE]):
+                result_breakdown[Operation.AND]['fail'] += 1
+            else:
+                result_breakdown[Operation.AND]['success'] += 1
+
+            if (currentTest.result[Operation.OR] > currentTest.result[Operation.SINGLE]):
+                result_breakdown[Operation.OR]['success'] += 1
+            else:
+                result_breakdown[Operation.OR]['fail'] += 1
+
+            if (currentTest.result[Operation.EXCLUDE] > currentTest.result[Operation.SINGLE]):
+                result_breakdown[Operation.EXCLUDE]['fail'] += 1
+            else:
+                result_breakdown[Operation.EXCLUDE]['success'] += 1
+
+        print(result_breakdown)
+            
+            
 
         
         
