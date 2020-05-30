@@ -37,9 +37,16 @@ class SearchContext(ABC):
     @abstractmethod
     def parse_result_into_value(self, result):
         pass
+    
+    @abstractmethod
+    def get_header(self):
+        pass
 
 
 class BingContext(SearchContext):
+    def __init__(self, header):
+        self.header = header
+    
     def get_element_type(self):
         return 'span'
 
@@ -55,9 +62,11 @@ class BingContext(SearchContext):
     def get_param(self):
         return 'q'
 
+    def get_header(self):
+        return self.header
+
     def parse_result_into_value(self, result):
-        r_pipe = result.replace('<span class="sb_count">', '')
-        r_pipe = r_pipe.replace(' results</span>', '')
+        r_pipe = result.replace(' results', '')
         r_pipe = r_pipe.replace(',', '')
         r_pipe = int(r_pipe)
         return r_pipe
@@ -68,62 +77,72 @@ class KeywordTest:
     result = {}
     cancel = False
     def __init__(self, search, alt, s_context):
-        self.SearchWord = search
-        self.AltWord = alt
+        self.searchWord = search
+        self.altWord = alt
         self.context = s_context
+        self.result = { }
+        self.cancel = False
         return
 
     def do_single_search(self):
-        single_page = requests.get(self.context.get_url(), params = {self.context.get_param(): self.searchWord})
-        soup = BeautifulSoup(single_page.text)
-        s_result = soup.find(self.context.get_element_type(),{self.context.context.get_selector_type():self.context.get_selector()})
+        single_page = requests.get(self.context.get_url(), params = {self.context.get_param(): self.searchWord},
+                                   headers = self.context.get_header())
+        soup = BeautifulSoup(single_page.text, 'html.parser')
+        s_result = soup.find(self.context.get_element_type(),{self.context.get_selector_type():self.context.get_selector()})
         if (s_result == None):
-            cancel = True
+            self.cancel = True
+            print("Fail [" + self.searchWord + "] on single search")
             return
-        result[Operation.SINGLE] = self.context.parse_result_into_value(s_result)
+        self.result[Operation.SINGLE] = self.context.parse_result_into_value(s_result.text)
         return
 
     def do_and_search(self):
-        and_page = requests.get(self.context.get_url(), params = {self.context.get_param(): self.searchWord + " " + self.altWord})
-        soup = BeautifulSoup(and_page.text)
-        s_result = soup.find(self.context.get_element_type(),{self.context.context.get_selector_type():self.context.get_selector()})
+        and_page = requests.get(self.context.get_url(), params = {self.context.get_param(): self.searchWord + " " + self.altWord},
+                                headers = self.context.get_header())
+        soup = BeautifulSoup(and_page.text, 'html.parser')
+        s_result = soup.find(self.context.get_element_type(),{self.context.get_selector_type():self.context.get_selector()})
         if (s_result == None):
-            cancel = True
+            self.cancel = True
+            print("Fail [" + self.searchWord + "] on and search")
             return
-        result[Operation.AND] = self.context.parse_result_into_value(s_result)
+        self.result[Operation.AND] = self.context.parse_result_into_value(s_result.text)
         return
 
     def do_or_search(self):
-        or_page = requests.get(self.context.get_url(), params = {self.context.get_param(): self.searchWord + " | " + self.altWord})
-        soup = BeautifulSoup(or_page.text)
-        s_result = soup.find(self.context.get_element_type(),{self.context.context.get_selector_type():self.context.get_selector()})
+        or_page = requests.get(self.context.get_url(), params = {self.context.get_param(): self.searchWord + " | " + self.altWord},
+                               headers = self.context.get_header())
+        soup = BeautifulSoup(or_page.text, 'html.parser')
+        s_result = soup.find(self.context.get_element_type(),{self.context.get_selector_type():self.context.get_selector()})
         if (s_result == None):
-            cancel = True
+            self.cancel = True
+            print("Fail [" + self.searchWord + "] on or search")
             return
-        result[Operation.OR] = self.context.parse_result_into_value(s_result)
+        self.result[Operation.OR] = self.context.parse_result_into_value(s_result.text)
         return
 
     def do_exclude_search(self):
-        exclude_page = requests.get(self.context.get_url(), params = {self.context.get_param(): self.searchWord + " -" + self.altWord})
-        soup = BeautifulSoup(exclude_page.text)
-        s_result = soup.find(self.context.get_element_type(),{self.context.context.get_selector_type():self.context.get_selector()})
+        exclude_page = requests.get(self.context.get_url(), params = {self.context.get_param(): self.searchWord + " -" + self.altWord},
+                                    headers = self.context.get_header())
+        soup = BeautifulSoup(exclude_page.text, 'html.parser')
+        s_result = soup.find(self.context.get_element_type(),{self.context.get_selector_type():self.context.get_selector()})
         if (s_result == None):
-            cancel = True
+            self.cancel = True
+            print("Fail [" + self.searchWord + "] on exclude search")
             return
-        result[Operation.EXCLUDE] = self.context.parse_result_into_value(s_result)
+        self.result[Operation.EXCLUDE] = self.context.parse_result_into_value(s_result.text)
         return
 
     def do_search(self):
-        do_single_search()
-        if cancel:
+        self.do_single_search()
+        if self.cancel:
             return
-        do_and_search()
-        if cancel:
+        self.do_and_search()
+        if self.cancel:
             return
-        do_or_search()
-        if cancel:
+        self.do_or_search()
+        if self.cancel:
             return
-        do_exclude_search()
+        self.do_exclude_search()
         return
     
 
@@ -142,7 +161,7 @@ def test_bing_context():
     assert b_context.get_element_type() == 'span'
     assert b_context.get_selector_type() == 'class'
     assert b_context.get_selector() == 'sb_count'
-    assert b_context.parse_result_into_value('<span class="sb_count">565,000,000 results</span>') == 565000000
+    assert b_context.parse_result_into_value('565,000,000 results') == 565000000
     return
 
 def test_word_list_load():
@@ -151,11 +170,34 @@ def test_word_list_load():
 
 # Running
 if __name__ == "__main__":
-    test_bing_context()
+    # Grab these from your browser?
+    cookie = input('cookie: ')
+    agent = input('agent: ')
+    header = { 'user-agent': agent, 'cookie': cookie }
+    
+    #test_bing_context()
+    bingContext = BingContext(header)
     word_list = get_word_list('google-10000-english-usa-no-swears-medium.txt')
     word_set = { }
+    keywordTests = []
     for num in range(0, 1000):
         rand = random.randint(0, len(word_list)-1) # Get a random word.
-        print(word_list[rand])
+        print(num)
+        counter = 0
+        while rand in word_set:
+            rand = random.randint(0, len(word_list)-1)
+            counter = counter + 1
+            if counter > 10000:
+                break
+
+        altrand = random.randint(0, len(word_list)-1)
+        while (altrand == num) or (altrand in word_set):
+            altrand = random.randint(0, len(word_list)-1)
+
+        currentTest = KeywordTest(word_list[rand], word_list[altrand], bingContext)
+        currentTest.do_search()
+        print(currentTest.__dict__)
+
+        
         
         
