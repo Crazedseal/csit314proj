@@ -215,7 +215,8 @@ if __name__ == "__main__":
                 result_breakdown[Operation.EXCLUDE]['success'] += 1
 
         print(result_breakdown)
-        input('')
+        
+    input('')
             
             
 
