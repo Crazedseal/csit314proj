@@ -171,34 +171,86 @@ def test_word_list_load():
 # Running
 if __name__ == "__main__":
     # Grab these from your browser?
+    
+    run_count = 0
+    # Run count input prompt
+    while True:
+        run_count = -1
+        try:
+            run_count = int(input('run count: '))
+            if (run_count > 0):
+                break
+        except:
+            print('Ensure that the number you input is a positive non-zero integer!')
+
+
+    print('Run Count selected -> ' + str(run_count))
+
+    
+    word_list_file = ""
+    # Word List file prompt
+    while True:
+        print("Enter the word file name below or default for google-10000-english-usa-no-swears-medium.txt")
+        word_list_file_hold = input('word file: ')
+        if (word_list_file_hold == "default"):
+            word_list_file = 'google-10000-english-usa-no-swears-medium.txt'
+            break
+        try:
+            fOp = open(word_list_file_hold, "r")
+            assert fOp
+            fOp.close()
+            word_list_file = word_list_file_hold
+            break
+        except:
+            print('Ensure that the file exists and can be read!')
+            
+        
+    # Input for cookie and Agent
     cookie = input('cookie: ')
     agent = input('agent: ')
     header = { 'user-agent': agent, 'cookie': cookie }
+    # Result breakdown data structure.
     result_breakdown = { Operation.AND: { 'success': 0, 'fail': 0 }, Operation.OR: { 'success': 0, 'fail': 0 }, Operation.EXCLUDE: { 'success': 0, 'fail': 0 } }
+    
     #test_bing_context()
+    # Construct a BingContext
     bingContext = BingContext(header)
-    word_list = get_word_list('google-10000-english-usa-no-swears-medium.txt')
+    word_list = get_word_list(word_list_file)
     word_set = { }
+
+    # Test if the word list is sufficient size for the run count.
+    if (len(word_list)/2 < run_count):
+        print('Amount of words in word set ' + str(len(word_list)) + ' insufficient for run count ' + str(run_count))
+        assert len(word_list)/2 > run_count
+
+
+    # Begin testing.
     keywordTests = []
-    for num in range(0, 20):
+    for num in range(0, run_count):
         rand = random.randint(0, len(word_list)-1) # Get a random word.
         print(num)
         counter = 0
+        # Select our first word.
         while rand in word_set:
             rand = random.randint(0, len(word_list)-1)
             counter = counter + 1
-            if counter > 10000:
+            if counter > 10000: 
                 break
-
+        
+        # Select our second word.
         altrand = random.randint(0, len(word_list)-1)
         while (altrand == num) or (altrand in word_set):
             altrand = random.randint(0, len(word_list)-1)
 
+        # Do the test.
         currentTest = KeywordTest(word_list[rand], word_list[altrand], bingContext)
         currentTest.do_search()
+
+        # Print for both debugging and proper runtime purposes.
         print(currentTest.__dict__)
         
         if not currentTest.cancel:
+            # If the test was not cancelled, conduct analysis of current result.
             if (currentTest.result[Operation.AND] > currentTest.result[Operation.SINGLE]):
                 result_breakdown[Operation.AND]['fail'] += 1
             else:
@@ -214,8 +266,18 @@ if __name__ == "__main__":
             else:
                 result_breakdown[Operation.EXCLUDE]['success'] += 1
 
+        keywordTests.append(currentTest)
+        # Print our current result breakdown.
         print(result_breakdown)
-        
+
+    with open('output.txt', mode='w') as f_out:
+        assert f_out
+        for test in keywordTests:
+            f_out.write(str(test.__dict__))
+
+        f_out.write(str(result_breakdown) + '\n')
+    
+    # Program is over. However this is to keep the window open.    
     input('')
             
             
