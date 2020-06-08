@@ -273,12 +273,12 @@ if __name__ == "__main__":
     with open('output.txt', mode='w') as f_out:
         assert f_out
         for test in keywordTests:
-            f_out.write(str(test.__dict__))
+            f_out.write(str(test.__dict__) + '\n')
 
         f_out.write(str(result_breakdown) + '\n')
     
     # Program is over. However this is to keep the window open.    
-    input('')
+    input('Press Enter to Exit.')
             
             
 
